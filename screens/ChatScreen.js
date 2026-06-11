@@ -754,6 +754,7 @@ export default function ChatScreen({ navigation, route }) {
           size={56}
           showOnline={chat?.type === 'private' && otherProfile?.isOnline}
           onPress={canOpenHeaderProfile ? () => openUserProfile(otherProfile?.uid, otherProfile) : null}
+          cardEffect={chat?.type === 'private' ? (otherProfile?.profileCard || null) : null}
         />
         <View style={styles.metaBody}>
           <Text style={styles.title}>{headerTitle}</Text>
