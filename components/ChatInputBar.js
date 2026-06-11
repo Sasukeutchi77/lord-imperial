@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, Text
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { getOptimizedAudioRecordingOptions } from '../services/media';
-import { pickChatImageFromLibrary, pickChatVideoFromLibrary } from '../services/imagePicker';
+import { pickChatImageFromLibrary, pickChatVideoFromLibrary, pickDocumentFromLibrary } from '../services/imagePicker';
 import { EMOJI_CATEGORIES } from '../utils/helpers';
 import { useAppTheme } from '../utils/theme';
 import PollComposerModal from './PollComposerModal';
@@ -25,6 +25,7 @@ export default function ChatInputBar({
   onSendVoice,
   onSendImage,
   onSendVideo,
+  onSendFile,
   onSendPoll,
   onCreateSticker,
   onSendSticker,
@@ -217,6 +218,30 @@ export default function ChatInputBar({
       await onSendVideo(result.uri, result.mimeType || 'video/mp4', { replyTo });
     } catch (error) {
       Alert.alert('Vidéo impossible', error.message || 'Cette vidéo n\'a pas pu être envoyée.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePickFile = async () => {
+    setShowAttachMenu(false);
+    if (disabled || mediaBusy || recording) {
+      if (disabled) Alert.alert('Action indisponible', disabledReason || 'Vous ne pouvez pas envoyer de fichier pour le moment.');
+      return;
+    }
+    if (!onSendFile) {
+      Alert.alert('Indisponible', "L'envoi de fichiers n'est pas encore disponible.");
+      return;
+    }
+    try {
+      setBusy(true);
+      setShowEmojiPanel(false);
+      stopTypingIfNeeded();
+      const result = await pickDocumentFromLibrary();
+      if (!result) return;
+      await onSendFile(result.uri, result.fileName, result.mimeType, result.fileSize, { replyTo });
+    } catch (error) {
+      Alert.alert('Fichier impossible', error.message || "Ce fichier n'a pas pu être envoyé.");
     } finally {
       setBusy(false);
     }
@@ -473,6 +498,16 @@ export default function ChatInputBar({
                 <Ionicons name="videocam" size={20} color="#fff" />
               </View>
               <Text style={styles.attachLabel}>Vidéo</Text>
+            </Pressable>
+            <Pressable
+              onPress={handlePickFile}
+              style={styles.attachItem}
+              disabled={disabled || mediaBusy}
+            >
+              <View style={[styles.attachIcon, { backgroundColor: '#4CAF50' }]}>
+                <Ionicons name="document-attach" size={20} color="#fff" />
+              </View>
+              <Text style={styles.attachLabel}>Fichier</Text>
             </Pressable>
             <Pressable
               onPress={handleOpenPollComposer}
