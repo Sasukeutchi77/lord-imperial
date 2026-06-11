@@ -1,10 +1,9 @@
-import React, { memo, useMemo, useRef } from 'react';
+import React, { memo, useEffect, useMemo, useRef } from 'react';
 import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import {
   extractFirstUrl,
-  formatFileSize,
-  getFileIconName,
   formatTime,
   getMessagePreviewLabel,
   getPollOptions,
@@ -120,6 +119,15 @@ function ChatBubble({
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const swipeTranslate = useRef(new Animated.Value(0)).current;
+  const entranceFade = useRef(new Animated.Value(0)).current;
+  const entranceSlide = useRef(new Animated.Value(12)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(entranceFade, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.spring(entranceSlide, { toValue: 0, tension: 60, friction: 10, useNativeDriver: true }),
+    ]).start();
+  }, [entranceFade, entranceSlide]);
   const isSystem = message.type === 'system';
   const isDeleted = message.type === 'deleted';
   const groupShape = getGroupShape({ previousMessage, nextMessage, message });
@@ -129,7 +137,6 @@ function ChatBubble({
   const isImage = message.type === 'image' && Boolean(imageUri) && !isDeleted;
   const isVideo = message.type === 'video' && Boolean(imageUri) && !isDeleted;
   const isSticker = message.type === 'sticker' && Boolean(imageUri) && !isDeleted;
-  const isFile = message.type === 'file' && !isDeleted;
   const isPoll = message.type === 'poll' && Boolean(message.poll?.question);
   const disappearAfterMs = message.disappearAfterMs || null;
   const disappearAt = disappearAfterMs && message.createdAtMs ? message.createdAtMs + disappearAfterMs : null;
@@ -193,20 +200,6 @@ function ChatBubble({
       ) : null}
     </View>
   );
-
-  const fileNode = isFile ? (
-    <View style={styles.fileContainer}>
-      <View style={[styles.fileIconWrap, isMine ? styles.fileIconWrapMine : styles.fileIconWrapTheirs]}>
-        <Ionicons name={getFileIconName(message.mimeType, message.fileName)} size={22} color={isMine ? '#fff' : theme.colors.primary} />
-      </View>
-      <View style={styles.fileInfo}>
-        <Text style={[styles.fileName, !isMine && styles.fileNameTheirs]} numberOfLines={2}>{message.fileName || message.text || 'Fichier'}</Text>
-        {message.fileSize ? (
-          <Text style={[styles.fileSize, !isMine && styles.fileSizeTheirs]}>{formatFileSize(message.fileSize)}</Text>
-        ) : null}
-      </View>
-    </View>
-  ) : null;
 
   const retryAction = isMine && message.status === 'failed' ? (
     <Pressable onPress={() => onRetry?.(message)} style={styles.retryChip}>
@@ -298,7 +291,7 @@ function ChatBubble({
   ) : null;
 
   // For text messages: inline footer floats bottom-right (WhatsApp style)
-  const isTextOnly = !isAudio && !isImage && !isVideo && !isSticker && !isPoll && !isFile;
+  const isTextOnly = !isAudio && !isImage && !isVideo && !isSticker && !isPoll;
 
   const contentNode = (
     <>
@@ -309,7 +302,6 @@ function ChatBubble({
       {isVideo ? videoNode : null}
       {isSticker ? stickerNode : null}
       {isPoll ? pollNode : null}
-      {isFile ? fileNode : null}
 
       {isTextOnly ? (
         // Text + footer on the same "line flow" — like WhatsApp
@@ -332,7 +324,7 @@ function ChatBubble({
   );
 
   return (
-    <Animated.View style={{ transform: [{ translateX: swipeTranslate }] }} {...panResponder.panHandlers}>
+    <Animated.View style={{ opacity: entranceFade, transform: [{ translateX: swipeTranslate }, { translateY: entranceSlide }] }} {...panResponder.panHandlers}>
       <View style={[styles.row, isMine ? styles.rowMine : styles.rowTheirs, groupShape === 'middle' || groupShape === 'end' ? styles.compactRow : null]}>
         {!isMine && showSenderAvatar ? (
           <Avatar uri={senderAvatar} label={senderLabel} size={30} onPress={onPressSender} />
@@ -341,23 +333,32 @@ function ChatBubble({
         )}
         <View style={styles.contentWrap}>
           <Pressable disabled={!onLongPress} onLongPress={onLongPress} delayLongPress={280}>
-            <View
-              style={
-                isAudio
-                  ? [styles.audioWrap, bubbleStyle]
-                  : isImage
-                    ? [styles.imageWrap, bubbleStyle]
-                    : isVideo
+            {isMine && !isImage && !isVideo && !isSticker ? (
+              <LinearGradient
+                colors={isAudio ? ['#C9956B', '#9E6A38'] : ['#CC9B70', '#A06030']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={isAudio ? [styles.audioWrap, bubbleStyle, styles.gradientBubble] : [bubbleStyle, styles.gradientBubble]}
+              >
+                {contentNode}
+              </LinearGradient>
+            ) : (
+              <View
+                style={
+                  isAudio
+                    ? [styles.audioWrap, bubbleStyle]
+                    : isImage
                       ? [styles.imageWrap, bubbleStyle]
-                      : isSticker
-                        ? [styles.stickerWrap, bubbleStyle, styles.stickerBubble]
-                        : isFile
-                          ? [styles.fileBubble, bubbleStyle]
+                      : isVideo
+                        ? [styles.imageWrap, bubbleStyle]
+                        : isSticker
+                          ? [styles.stickerWrap, bubbleStyle, styles.stickerBubble]
                           : bubbleStyle
-              }
-            >
-              {contentNode}
-            </View>
+                }
+              >
+                {contentNode}
+              </View>
+            )}
           </Pressable>
           {reactions.length ? (
             <View style={[styles.reactionsWrap, isMine ? styles.reactionsMine : styles.reactionsTheirs]}>
@@ -406,8 +407,6 @@ const areEqual = (previous, next) => {
     JSON.stringify(previousMessage.reactions || {}) === JSON.stringify(nextMessage.reactions || {}) &&
     JSON.stringify(previousMessage.poll || null) === JSON.stringify(nextMessage.poll || null) &&
     JSON.stringify(previousMessage.sticker || null) === JSON.stringify(nextMessage.sticker || null) &&
-    previousMessage.fileName === nextMessage.fileName &&
-    previousMessage.fileSize === nextMessage.fileSize &&
     previous.previousMessage?.id === next.previousMessage?.id &&
     previous.nextMessage?.id === next.nextMessage?.id &&
     (previousMessage.delivery?.deliveredTo?.length || 0) === (nextMessage.delivery?.deliveredTo?.length || 0) &&
@@ -525,11 +524,20 @@ const createStyles = (theme) =>
     },
     // My messages: warm gold/brown (Lord Imperial brand)
     mine: {
-      backgroundColor: theme.colors.bubbleMine,
+      backgroundColor: 'transparent',
+    },
+    gradientBubble: {
+      shadowColor: '#A07040',
+      shadowOpacity: 0.28,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 5,
     },
     // Others' messages: dark surface like WhatsApp dark mode
     theirs: {
-      backgroundColor: '#1E2733',
+      backgroundColor: '#1C2733',
+      borderWidth: 0.5,
+      borderColor: 'rgba(255,255,255,0.07)',
     },
     highlightedBubble: {
       borderWidth: 2,
@@ -626,12 +634,13 @@ const createStyles = (theme) =>
     },
     body: {
       color: '#FFFFFF',
-      fontSize: 15,
-      lineHeight: 21,
+      fontSize: 15.5,
+      lineHeight: 22,
       flexShrink: 1,
+      letterSpacing: 0.1,
     },
     bodyTheirs: {
-      color: '#E8EDF2',
+      color: '#DCE8F5',
     },
     deletedBody: {
       color: 'rgba(200,200,200,0.6)',
@@ -822,54 +831,6 @@ const createStyles = (theme) =>
       fontWeight: '600',
     },
     pollSummaryTheirs: {
-      color: theme.colors.textMuted,
-    },
-    fileBubble: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-    },
-    fileContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      minWidth: 160,
-      maxWidth: 240,
-      paddingVertical: 4,
-    },
-    fileIconWrap: {
-      width: 42,
-      height: 42,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      flexShrink: 0,
-    },
-    fileIconWrapMine: {
-      backgroundColor: 'rgba(255,255,255,0.18)',
-    },
-    fileIconWrapTheirs: {
-      backgroundColor: theme.colors.surfaceMuted,
-    },
-    fileInfo: {
-      flex: 1,
-      minWidth: 0,
-      gap: 2,
-    },
-    fileName: {
-      color: '#fff',
-      fontSize: 13,
-      fontWeight: '600',
-      lineHeight: 17,
-    },
-    fileNameTheirs: {
-      color: theme.colors.text,
-    },
-    fileSize: {
-      color: 'rgba(255,255,255,0.65)',
-      fontSize: 11,
-    },
-    fileSizeTheirs: {
       color: theme.colors.textMuted,
     },
   });
