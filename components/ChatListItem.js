@@ -25,12 +25,21 @@ function ChatListItem({ chat, currentUser, onPress, online = true }) {
   const preview = chat.lastMessage || 'Commencer la conversation';
   const badgeIcon = chat.type === 'channel' ? 'megaphone' : chat.type === 'group' ? 'people' : null;
 
+  // Show animated card only for private chats (where the other user has one)
+  const cardEffect = chat.type === 'private' ? (otherMember?.profileCard || null) : null;
+
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
       <View>
-        <Avatar uri={otherMember?.avatar || chat.avatar} label={title} size={64} showOnline={activeDot} />
+        <Avatar
+          uri={otherMember?.avatar || chat.avatar}
+          label={title}
+          size={64}
+          showOnline={activeDot}
+          cardEffect={cardEffect}
+        />
         {badgeIcon ? (
-          <View style={styles.kindBadge}>
+          <View style={[styles.kindBadge, cardEffect && styles.kindBadgeWithCard]}>
             <Ionicons name={badgeIcon} size={12} color="#FFFFFF" />
           </View>
         ) : null}
@@ -90,7 +99,8 @@ const areEqual = (previous, next) => {
     previousOtherMember?.username === nextOtherMember?.username &&
     previousOtherMember?.email === nextOtherMember?.email &&
     previousOtherMember?.isOnline === nextOtherMember?.isOnline &&
-    previousOtherMember?.lastSeen === nextOtherMember?.lastSeen
+    previousOtherMember?.lastSeen === nextOtherMember?.lastSeen &&
+    previousOtherMember?.profileCard === nextOtherMember?.profileCard
   );
 };
 
@@ -119,6 +129,10 @@ const createStyles = (theme) =>
       borderColor: theme.colors.background,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    kindBadgeWithCard: {
+      right: 14,
+      bottom: 14,
     },
     body: {
       flex: 1,
