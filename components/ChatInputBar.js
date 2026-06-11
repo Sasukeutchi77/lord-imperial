@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { getOptimizedAudioRecordingOptions } from '../services/media';
-import { pickChatImageFromLibrary, pickChatVideoFromLibrary, pickDocumentFromLibrary } from '../services/imagePicker';
+import { pickChatImageFromLibrary, pickChatVideoFromLibrary } from '../services/imagePicker';
 import { EMOJI_CATEGORIES } from '../utils/helpers';
 import { useAppTheme } from '../utils/theme';
 import PollComposerModal from './PollComposerModal';
@@ -25,7 +25,6 @@ export default function ChatInputBar({
   onSendVoice,
   onSendImage,
   onSendVideo,
-  onSendFile,
   onSendPoll,
   onCreateSticker,
   onSendSticker,
@@ -52,7 +51,46 @@ export default function ChatInputBar({
   const [showCustomEmoji, setShowCustomEmoji] = useState(false);
   const typingTimeoutRef = useRef(null);
   const typingActiveRef = useRef(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const sendScale = useRef(new Animated.Value(1)).current;
+  const attachMenuAnim = useRef(new Animated.Value(0)).current;
+  const [inputFocused, setInputFocused] = useState(false);
   const mediaBusy = busy || uploadingMedia;
+
+  // Pulsing animation pour le point d'enregistrement
+  useEffect(() => {
+    if (recording) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [recording, pulseAnim]);
+
+  // Animation spring sur le bouton envoi quand du texte apparaît/disparaît
+  useEffect(() => {
+    Animated.spring(sendScale, {
+      toValue: hasText ? 1 : 0.85,
+      tension: 180,
+      friction: 12,
+      useNativeDriver: true,
+    }).start();
+  }, [hasText, sendScale]);
+
+  // Animation slide pour le menu d'attachement
+  useEffect(() => {
+    Animated.timing(attachMenuAnim, {
+      toValue: showAttachMenu ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [showAttachMenu, attachMenuAnim]);
 
   useEffect(() => {
     let interval;
@@ -218,30 +256,6 @@ export default function ChatInputBar({
       await onSendVideo(result.uri, result.mimeType || 'video/mp4', { replyTo });
     } catch (error) {
       Alert.alert('Vidéo impossible', error.message || 'Cette vidéo n\'a pas pu être envoyée.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handlePickFile = async () => {
-    setShowAttachMenu(false);
-    if (disabled || mediaBusy || recording) {
-      if (disabled) Alert.alert('Action indisponible', disabledReason || 'Vous ne pouvez pas envoyer de fichier pour le moment.');
-      return;
-    }
-    if (!onSendFile) {
-      Alert.alert('Indisponible', "L'envoi de fichiers n'est pas encore disponible.");
-      return;
-    }
-    try {
-      setBusy(true);
-      setShowEmojiPanel(false);
-      stopTypingIfNeeded();
-      const result = await pickDocumentFromLibrary();
-      if (!result) return;
-      await onSendFile(result.uri, result.fileName, result.mimeType, result.fileSize, { replyTo });
-    } catch (error) {
-      Alert.alert('Fichier impossible', error.message || "Ce fichier n'a pas pu être envoyé.");
     } finally {
       setBusy(false);
     }
@@ -415,7 +429,7 @@ export default function ChatInputBar({
           </View>
         ) : recording ? (
           <View style={styles.statusBanner}>
-            <View style={styles.recordingDot} />
+            <Animated.View style={[styles.recordingDot, { opacity: pulseAnim }]} />
             <Text style={styles.statusBannerText}>
               {formatRecordingDuration(recordingDuration)} · Appuyez sur Stop pour envoyer
             </Text>
@@ -477,8 +491,11 @@ export default function ChatInputBar({
         ) : null}
 
         {/* Attach menu (photo / video / poll / sticker) */}
-        {showAttachMenu && !recording ? (
-          <View style={styles.attachMenu}>
+        {(showAttachMenu || attachMenuAnim._value > 0) && !recording ? (
+          <Animated.View style={[styles.attachMenu, {
+            opacity: attachMenuAnim,
+            transform: [{ translateY: attachMenuAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+          }]}>
             <Pressable
               onPress={handlePickImage}
               style={styles.attachItem}
@@ -500,16 +517,6 @@ export default function ChatInputBar({
               <Text style={styles.attachLabel}>Vidéo</Text>
             </Pressable>
             <Pressable
-              onPress={handlePickFile}
-              style={styles.attachItem}
-              disabled={disabled || mediaBusy}
-            >
-              <View style={[styles.attachIcon, { backgroundColor: '#4CAF50' }]}>
-                <Ionicons name="document-attach" size={20} color="#fff" />
-              </View>
-              <Text style={styles.attachLabel}>Fichier</Text>
-            </Pressable>
-            <Pressable
               onPress={handleOpenPollComposer}
               style={styles.attachItem}
               disabled={disabled || mediaBusy}
@@ -529,11 +536,11 @@ export default function ChatInputBar({
               </View>
               <Text style={styles.attachLabel}>Sticker</Text>
             </Pressable>
-          </View>
+          </Animated.View>
         ) : null}
 
         {/* ── Main flat input row ── */}
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, inputFocused && styles.inputRowFocused]}>
 
           {/* LORD IMPERIAL custom emoji toggle */}
           <Pressable
@@ -569,6 +576,9 @@ export default function ChatInputBar({
             editable={!disabled && !mediaBusy && !recording}
             style={[styles.input, disabled && styles.inputDisabled]}
             multiline
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            selectionColor={theme.colors.accent}
           />
 
           {/* Attachment toggle – only when no text and not recording */}
@@ -606,19 +616,28 @@ export default function ChatInputBar({
             </Pressable>
           ) : null}
 
+          {/* Compteur de caractères - visible quand > 200 chars */}
+          {text.length > 200 ? (
+            <Text style={[styles.charCount, text.length > 3800 && styles.charCountCritical]}>
+              {text.length}/4000
+            </Text>
+          ) : null}
+
           {/* Send / Mic button – inline at the right end */}
           {hasText ? (
-            <Pressable
-              onPress={handleSend}
-              style={[styles.roundBtn, styles.sendBtn, sendDisabled && styles.roundBtnDisabled]}
-              disabled={sendDisabled}
-            >
-              {busy ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Ionicons name="send" size={18} color="#fff" style={{ marginLeft: 2 }} />
-              )}
-            </Pressable>
+            <Animated.View style={{ transform: [{ scale: sendScale }] }}>
+              <Pressable
+                onPress={handleSend}
+                style={[styles.roundBtn, styles.sendBtn, sendDisabled && styles.roundBtnDisabled]}
+                disabled={sendDisabled}
+              >
+                {busy ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Ionicons name="send" size={18} color="#fff" style={{ marginLeft: 2 }} />
+                )}
+              </Pressable>
+            </Animated.View>
           ) : (
             <Pressable
               onPress={toggleRecording}
@@ -681,16 +700,21 @@ const createStyles = (theme) =>
       borderColor: theme.colors.border,
     },
     recordingDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
+      width: 10,
+      height: 10,
+      borderRadius: 5,
       backgroundColor: theme.colors.danger,
+      shadowColor: theme.colors.danger,
+      shadowOpacity: 0.6,
+      shadowRadius: 5,
+      shadowOffset: { width: 0, height: 0 },
     },
     statusBannerText: {
       flex: 1,
       color: theme.colors.text,
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '700',
+      letterSpacing: 0.2,
     },
     cancelRecordingBtn: {
       width: 26,
@@ -819,12 +843,31 @@ const createStyles = (theme) =>
       alignItems: 'center',
       backgroundColor: theme.colors.input,
       borderRadius: 26,
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: theme.colors.border,
       paddingHorizontal: 4,
       paddingVertical: 4,
-      minHeight: 48,
+      minHeight: 52,
       gap: 2,
+    },
+    inputRowFocused: {
+      borderColor: theme.colors.primary,
+      shadowColor: theme.colors.primary,
+      shadowOpacity: 0.18,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 3,
+    },
+    charCount: {
+      color: theme.colors.textMuted,
+      fontSize: 11,
+      fontWeight: '600',
+      paddingHorizontal: 4,
+      minWidth: 40,
+      textAlign: 'right',
+    },
+    charCountCritical: {
+      color: theme.colors.danger,
     },
     sideBtn: {
       width: 36,
@@ -837,14 +880,15 @@ const createStyles = (theme) =>
     input: {
       flex: 1,
       minHeight: 36,
-      maxHeight: 120,
+      maxHeight: 130,
       color: theme.colors.text,
-      fontSize: 15,
-      lineHeight: 20,
+      fontSize: 15.5,
+      lineHeight: 22,
       paddingTop: 8,
       paddingBottom: 8,
-      paddingHorizontal: 4,
+      paddingHorizontal: 6,
       textAlignVertical: 'center',
+      letterSpacing: 0.1,
     },
     inputDisabled: {
       opacity: 0.6,
@@ -861,12 +905,22 @@ const createStyles = (theme) =>
     },
     micBtn: {
       backgroundColor: theme.colors.primary,
+      shadowColor: theme.colors.primary,
+      shadowOpacity: 0.35,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 4,
     },
     stopBtn: {
       backgroundColor: theme.colors.danger,
     },
     sendBtn: {
       backgroundColor: theme.colors.primary,
+      shadowColor: theme.colors.primary,
+      shadowOpacity: 0.45,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 6,
     },
     roundBtnDisabled: {
       opacity: 0.5,
