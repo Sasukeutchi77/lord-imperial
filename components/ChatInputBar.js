@@ -8,6 +8,7 @@ import { EMOJI_CATEGORIES } from '../utils/helpers';
 import { useAppTheme } from '../utils/theme';
 import PollComposerModal from './PollComposerModal';
 import StickerComposerModal from './StickerComposerModal';
+import CustomEmojiPanel from './CustomEmojiPanel';
 
 const MIN_RECORDING_DURATION_MS = 700;
 const TYPING_DEBOUNCE_MS = 1500;
@@ -47,6 +48,7 @@ export default function ChatInputBar({
   const [showPollComposer, setShowPollComposer] = useState(false);
   const [showStickerComposer, setShowStickerComposer] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showCustomEmoji, setShowCustomEmoji] = useState(false);
   const typingTimeoutRef = useRef(null);
   const typingActiveRef = useRef(false);
   const mediaBusy = busy || uploadingMedia;
@@ -416,6 +418,11 @@ export default function ChatInputBar({
           </View>
         ) : null}
 
+        {/* LORD IMPERIAL Custom Emoji Panel */}
+        {showCustomEmoji ? (
+          <CustomEmojiPanel onPickEmoji={handlePickCustomEmoji} />
+        ) : null}
+
         {/* Emoji panel */}
         {showEmojiPanel ? (
           <ScrollView
@@ -492,6 +499,15 @@ export default function ChatInputBar({
 
         {/* ── Main flat input row ── */}
         <View style={styles.inputRow}>
+
+          {/* LORD IMPERIAL custom emoji toggle */}
+          <Pressable
+            onPress={toggleCustomEmoji}
+            style={[styles.iconButton, showCustomEmoji && styles.iconButtonActive]}
+            disabled={disabled || Boolean(recording)}
+          >
+            <Text style={{ fontSize: 16 }}>👑</Text>
+          </Pressable>
 
           {/* Emoji toggle */}
           <Pressable
