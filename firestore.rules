@@ -61,7 +61,7 @@ service cloud.firestore {
     }
 
     function validConversationLastMessageType(value) {
-      return value == null || value in ['text', 'audio', 'image', 'poll', 'system', 'deleted'];
+      return value == null || value in ['text', 'audio', 'image', 'poll', 'system', 'sticker', 'deleted'];
     }
 
     function validPinnedMessage(data) {
@@ -121,7 +121,8 @@ service cloud.firestore {
           'lastActivityAtMs',
           'lastMessage',
           'lastMessageType',
-          'lastMessageSenderId'
+          'lastMessageSenderId',
+          'disappearAfterMs'
         ])
         && data.id == conversationId
         && validConversationType(data.type)
@@ -147,6 +148,7 @@ service cloud.firestore {
         && isOptionalInt(data.createdAtMs)
         && isOptionalInt(data.updatedAtMs)
         && isOptionalInt(data.lastActivityAtMs)
+        && isOptionalInt(data.disappearAfterMs)
         && validPermissions(data);
     }
 
@@ -196,12 +198,13 @@ service cloud.firestore {
         'lastMessageType',
         'lastMessageSenderId',
         'lastReadAt',
-        'unreadCountByUser'
+        'unreadCountByUser',
+        'disappearAfterMs'
       ]);
     }
 
     function validMessageType(value) {
-      return value in ['text', 'audio', 'image', 'poll', 'system'];
+      return value in ['text', 'audio', 'image', 'poll', 'system', 'sticker'];
     }
 
     function validSenderSnapshot(data) {
@@ -263,6 +266,7 @@ service cloud.firestore {
           'replyTo',
           'poll',
           'reactions',
+          'sticker',
           'deletedAt',
           'deletedBy',
           'delivery'
@@ -309,6 +313,13 @@ service cloud.firestore {
           || (
             request.resource.data.type == 'system'
             && isNonEmptyString(request.resource.data.text, 4000)
+          )
+          || (
+            request.resource.data.type == 'sticker'
+            && request.resource.data.text is string
+            && request.resource.data.audioUrl == null
+            && isNonEmptyString(request.resource.data.mediaUrl, 2000)
+            && (request.resource.data.sticker == null || request.resource.data.sticker is map)
           )
         );
     }
@@ -379,7 +390,8 @@ service cloud.firestore {
           'notificationTokens',
           'notificationProvider',
           'notificationPlatform',
-          'notificationsUpdatedAtMs'
+          'notificationsUpdatedAtMs',
+          'profileCard'
         ])
         && isOptionalString(request.resource.data.email, 200)
         && (request.resource.data.username == null || isValidUsername(request.resource.data.username))
@@ -400,7 +412,8 @@ service cloud.firestore {
         && isOptionalString(request.resource.data.notificationProvider, 40)
         && isOptionalString(request.resource.data.notificationPlatform, 20)
         && isOptionalInt(request.resource.data.notificationsUpdatedAtMs)
-        && isOptionalInt(request.resource.data.updatedAtMs);
+        && isOptionalInt(request.resource.data.updatedAtMs)
+        && (request.resource.data.profileCard == null || request.resource.data.profileCard is map);
       allow delete: if false;
     }
 
