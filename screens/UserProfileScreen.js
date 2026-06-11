@@ -53,15 +53,41 @@ export default function UserProfileScreen({ navigation, route }) {
     }
   };
 
+  const cardEffect = user?.profileCard || null;
+
   return (
     <ScreenContainer>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.hero}>
-          <Avatar uri={user?.avatar} label={label} size={112} showOnline={Boolean(user?.isOnline)} />
+          <Avatar
+            uri={user?.avatar}
+            label={label}
+            size={112}
+            showOnline={Boolean(user?.isOnline)}
+            cardEffect={cardEffect}
+          />
           <Text style={styles.name}>{label}</Text>
           <Text style={styles.username}>{user?.username || user?.email || 'Utilisateur'}</Text>
+
+          {/* Show card badge if user has an active card */}
+          {cardEffect ? (
+            <View style={styles.cardBadge}>
+              <Ionicons name="sparkles" size={12} color={theme.colors.primary} />
+              <Text style={styles.cardBadgeText}>
+                {cardEffect === 'fire' ? '🔥 Feu' :
+                 cardEffect === 'neon' ? '⚡ Néon' :
+                 cardEffect === 'galaxy' ? '🌌 Galaxy' :
+                 cardEffect === 'demonic' ? '😈 Démoniaque' : cardEffect}
+              </Text>
+            </View>
+          ) : null}
+
           <View style={styles.statusPill}>
-            <Ionicons name={user?.isOnline ? 'ellipse' : 'time-outline'} size={12} color={user?.isOnline ? theme.colors.success : theme.colors.textMuted} />
+            <Ionicons
+              name={user?.isOnline ? 'ellipse' : 'time-outline'}
+              size={12}
+              color={user?.isOnline ? theme.colors.success : theme.colors.textMuted}
+            />
             <Text style={styles.statusText}>{formatLastSeen(user?.lastSeen, user?.isOnline)}</Text>
           </View>
         </View>
@@ -88,7 +114,7 @@ export default function UserProfileScreen({ navigation, route }) {
         {isSelf ? (
           <Pressable style={styles.selfPill} onPress={() => navigation.navigate('Profile')}>
             <Ionicons name="person-circle-outline" size={18} color={theme.colors.text} />
-            <Text style={styles.selfPillText}>C’est votre profil</Text>
+            <Text style={styles.selfPillText}>C'est votre profil</Text>
           </Pressable>
         ) : (
           <PrimaryButton title="Envoyer un message privé" onPress={handleOpenPrivateChat} loading={openingChat} />
@@ -118,6 +144,22 @@ const createStyles = (theme) =>
     username: {
       color: theme.colors.primary,
       fontWeight: '800',
+    },
+    cardBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: 'rgba(201,149,107,0.12)',
+      borderWidth: 1,
+      borderColor: 'rgba(201,149,107,0.3)',
+      borderRadius: 99,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+    },
+    cardBadgeText: {
+      color: theme.colors.primary,
+      fontWeight: '800',
+      fontSize: 13,
     },
     statusPill: {
       flexDirection: 'row',
