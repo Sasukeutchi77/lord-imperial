@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "LORD IMPERIAL",
+    "slug": "lord-imperial",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "scheme": "lordimperial",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#17212B"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "LORD IMPERIAL utilise le microphone pour enregistrer les messages vocaux.",
+        "NSPhotoLibraryUsageDescription": "LORD IMPERIAL utilise votre galerie pour mettre à jour les photos de profil, de groupe et de canal.",
+        "NSPhotoLibraryAddUsageDescription": "LORD IMPERIAL peut enregistrer temporairement les images optimisées avant leur envoi.",
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
+    },
+    "android": {
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#17212B"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_MEDIA_IMAGES"
+      ],
+      "edgeToEdgeEnabled": true,
+      "package": "com.genspark.lordimperial"
+    },
+    "plugins": [
+      "expo-notifications",
+      "expo-image-picker",
+      "expo-font"
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4a573618-1ad5-4df6-af46-77c074ece196"
+      }
+    },
+    "owner": "demon1"
+  }
+}
