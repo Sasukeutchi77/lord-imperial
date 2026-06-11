@@ -1,6 +1,7 @@
-import React, { memo, useEffect, useMemo, useRef } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import {
   extractFirstUrl,
@@ -119,6 +120,10 @@ function ChatBubble({
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const swipeTranslate = useRef(new Animated.Value(0)).current;
+
+  const triggerLongPressHaptic = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  }, []);
   const entranceFade = useRef(new Animated.Value(0)).current;
   const entranceSlide = useRef(new Animated.Value(12)).current;
 
@@ -161,7 +166,10 @@ function ChatBubble({
         onPanResponderRelease: (_event, gestureState) => {
           const shouldReply = Math.abs(gestureState.dx) >= SWIPE_THRESHOLD;
           Animated.spring(swipeTranslate, { toValue: 0, useNativeDriver: true, bounciness: 8 }).start();
-          if (shouldReply) onSwipeReply?.(message);
+          if (shouldReply) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+            onSwipeReply?.(message);
+          }
         },
         onPanResponderTerminate: () => {
           Animated.spring(swipeTranslate, { toValue: 0, useNativeDriver: true }).start();
@@ -279,7 +287,10 @@ function ChatBubble({
               percentage={percentage}
               voted={voted}
               isMine={isMine}
-              onPress={() => onVotePoll?.(message, option?.id)}
+              onPress={() => {
+            Haptics.selectionAsync().catch(() => {});
+            onVotePoll?.(message, option?.id);
+          }}
             />
           );
         })}
@@ -332,7 +343,14 @@ function ChatBubble({
           <View style={styles.avatarSpacer} />
         )}
         <View style={styles.contentWrap}>
-          <Pressable disabled={!onLongPress} onLongPress={onLongPress} delayLongPress={280}>
+          <Pressable
+            disabled={!onLongPress}
+            onLongPress={() => {
+              triggerLongPressHaptic();
+              onLongPress?.();
+            }}
+            delayLongPress={280}
+          >
             {isMine && !isImage && !isVideo && !isSticker ? (
               <LinearGradient
                 colors={isAudio ? ['#C9956B', '#9E6A38'] : ['#CC9B70', '#A06030']}
@@ -368,7 +386,10 @@ function ChatBubble({
                   <Pressable
                     key={reaction.emoji}
                     style={[styles.reactionChip, active && styles.reactionChipActive]}
-                    onPress={() => onPressReaction?.(reaction.emoji)}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      onPressReaction?.(reaction.emoji);
+                    }}
                   >
                     <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
                     <Text style={[styles.reactionCount, active && styles.reactionCountActive]}>{reaction.count}</Text>
