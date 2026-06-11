@@ -20,7 +20,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { uploadAudioToCloudinary, uploadImageToCloudinary, uploadVideoToCloudinary } from './cloudinary';
+import { uploadAudioToCloudinary, uploadFileToCloudinary, uploadImageToCloudinary, uploadVideoToCloudinary } from './cloudinary';
 import {
   getMessagePreviewLabel,
   getMessageSearchText,
@@ -357,11 +357,17 @@ const createRemoteMessagePayload = ({
   replyTo = null,
   poll = null,
   sticker = null,
+  fileName = null,
+  fileSize = null,
+  mimeType = null,
 }) => ({
   clientId,
   text,
   audioUrl,
   mediaUrl,
+  fileName,
+  fileSize,
+  mimeType,
   senderId: sender.uid,
   senderSnapshot: {
     uid: sender.uid,
@@ -400,6 +406,9 @@ const createLocalMessagePayload = ({
   replyTo = null,
   poll = null,
   sticker = null,
+  fileName = null,
+  fileSize = null,
+  mimeType = null,
 }) => ({
   id: clientId,
   clientId,
@@ -407,6 +416,9 @@ const createLocalMessagePayload = ({
   audioUrl,
   mediaUrl,
   localUri,
+  fileName,
+  fileSize,
+  mimeType,
   senderId: sender.uid,
   senderSnapshot: {
     uid: sender.uid,
@@ -518,6 +530,17 @@ const uploadVideoFile = async ({ chatId, senderId, clientId, uri, mimeType, onPr
     timeout: 180000,
   });
 
+const uploadFileDocument = async ({ chatId, senderId, clientId, uri, mimeType, fileName, onProgress }) => {
+  const result = await uploadFileToCloudinary(uri, {
+    onProgress,
+    mimeType: mimeType || 'application/octet-stream',
+    fileName: fileName || `document_${clientId}`,
+    path: `chatFiles/${chatId}/${senderId}_${clientId}`,
+    timeout: 120000,
+  });
+  return result.url;
+};
+
 export const uploadConversationAvatar = async ({ chatId, uri, onProgress }) => {
   if (!chatId || !uri) {
     throw new Error('Image de conversation introuvable.');
@@ -586,6 +609,9 @@ const commitRemoteMessage = async (messageInput) => {
     replyTo: messageInput.replyTo || null,
     poll: messageInput.poll || null,
     sticker: messageInput.sticker || null,
+    fileName: messageInput.fileName || null,
+    fileSize: messageInput.fileSize || null,
+    mimeType: messageInput.mimeType || null,
   });
   const batch = writeBatch(db);
 
@@ -609,6 +635,9 @@ const commitRemoteMessage = async (messageInput) => {
     audioUrl: resolvedAudioUrl,
     mediaUrl: resolvedMediaUrl,
     sticker: payload.sticker || null,
+    fileName: payload.fileName || null,
+    fileSize: payload.fileSize || null,
+    mimeType: payload.mimeType || null,
     status: 'sent',
     localOnly: false,
   };
@@ -636,6 +665,9 @@ const sendOnlineMessage = async (messageInput) => {
     replyTo: messageInput.replyTo || null,
     poll: messageInput.poll || null,
     sticker: messageInput.sticker || null,
+    fileName: messageInput.fileName || null,
+    fileSize: messageInput.fileSize || null,
+    mimeType: messageInput.mimeType || null,
   });
 
   await mergeCachedMessages(messageInput.chatId, [localMessage]);
@@ -681,6 +713,21 @@ const sendOnlineMessage = async (messageInput) => {
           clientId: workingItem.clientId,
           uri: workingItem.localUri,
           mimeType: workingItem.mimeType || 'video/mp4',
+          onProgress: workingItem.onProgress,
+        }),
+      };
+    }
+
+    if (workingItem.type === 'file' && !workingItem.remoteMediaUrl && !workingItem.mediaUrl) {
+      workingItem = {
+        ...workingItem,
+        remoteMediaUrl: await uploadFileDocument({
+          chatId: workingItem.chatId,
+          senderId: workingItem.sender.uid,
+          clientId: workingItem.clientId,
+          uri: workingItem.localUri,
+          mimeType: workingItem.mimeType || 'application/octet-stream',
+          fileName: workingItem.fileName || null,
           onProgress: workingItem.onProgress,
         }),
       };
@@ -1707,6 +1754,25 @@ export const leaveChat = async ({ chatId, member }) => {
 };
 
 export const getConversationCollectionName = () => CONVERSATIONS_COLLECTION;
+
+export const sendFileMessage = async ({ chatId, sender, localUri, fileName, mimeType, fileSize, replyTo = null }) => {
+  if (!localUri) throw new Error('Fichier manquant.');
+  if (!fileName) throw new Error('Nom de fichier manquant.');
+  const clientId = createClientId();
+  return sendOnlineMessage({
+    clientId,
+    chatId,
+    sender,
+    text: fileName,
+    type: 'file',
+    localUri,
+    fileName,
+    mimeType: mimeType || 'application/octet-stream',
+    fileSize: fileSize || 0,
+    createdAtMs: Date.now(),
+    replyTo,
+  });
+};
 
 export const sendVideoMessage = async ({ chatId, sender, localUri, mimeType = 'video/mp4', replyTo = null, disappearAfterMs = null }) => {
   if (!localUri) throw new Error('URI vidéo manquant.');
