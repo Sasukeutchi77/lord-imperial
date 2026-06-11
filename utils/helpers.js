@@ -123,6 +123,8 @@ export const getPollUserVote = (poll = {}, userId) =>
 export const getMessagePreviewLabel = (message = {}) => {
   if (!message) return '';
   if (message.type === 'image') return '📷 Photo';
+  if (message.type === 'video') return '🎬 Vidéo';
+  if (message.type === 'file') return `📎 ${truncate(message.fileName || message.text || 'Fichier')}`;
   if (message.type === 'sticker') return `🏷️ ${truncate(message.sticker?.name || message.text || 'Sticker')}`;
   if (message.type === 'audio') return '🎤 Message vocal';
   if (message.type === 'poll') return `📊 ${truncate(message.poll?.question || message.text || 'Sondage')}`;
@@ -142,6 +144,7 @@ export const buildReplyReference = (message = {}) => ({
 export const getMessageSearchText = (message = {}) =>
   [
     message.text,
+    message.fileName,
     message.replyTo?.preview,
     message.poll?.question,
     message.sticker?.name,
@@ -159,6 +162,27 @@ export const getInitials = (label = '') => {
     return parts[0].slice(0, 2).toUpperCase();
   }
   return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+};
+
+export const formatFileSize = (bytes = 0) => {
+  const safe = Number(bytes) || 0;
+  if (safe === 0) return '';
+  if (safe < 1024) return `${safe} o`;
+  if (safe < 1024 * 1024) return `${(safe / 1024).toFixed(1)} Ko`;
+  if (safe < 1024 * 1024 * 1024) return `${(safe / (1024 * 1024)).toFixed(1)} Mo`;
+  return `${(safe / (1024 * 1024 * 1024)).toFixed(2)} Go`;
+};
+
+export const getFileIconName = (mimeType = '', fileName = '') => {
+  const mime = String(mimeType || '').toLowerCase();
+  const ext = String(fileName || '').split('.').pop().toLowerCase();
+  if (mime.includes('pdf') || ext === 'pdf') return 'document-text';
+  if (mime.includes('word') || ext === 'doc' || ext === 'docx') return 'document';
+  if (mime.includes('excel') || mime.includes('spreadsheet') || ext === 'xls' || ext === 'xlsx') return 'grid';
+  if (mime.includes('powerpoint') || mime.includes('presentation') || ext === 'ppt' || ext === 'pptx') return 'easel';
+  if (mime.includes('zip') || mime.includes('compressed') || ext === 'zip' || ext === 'rar') return 'archive';
+  if (mime.includes('text') || ext === 'txt') return 'document-text-outline';
+  return 'document-attach';
 };
 
 export const EMOJI_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '👏', '🙏', '😍', '🥰', '🤩', '😎', '🥳', '🤔', '💯', '🙌', '💪', '✨'];
