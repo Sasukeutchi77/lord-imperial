@@ -3,14 +3,15 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getInitials } from '../utils/helpers';
 import { useAppTheme } from '../utils/theme';
+import AnimatedProfileCard from './AnimatedProfileCard';
 
-function Avatar({ uri = null, label = '', size = 48, showOnline = false, onPress = null }) {
+function Avatar({ uri = null, label = '', size = 48, showOnline = false, onPress = null, cardEffect = null }) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, size), [theme, size]);
   const initials = useMemo(() => getInitials(label), [label]);
   const Container = onPress ? Pressable : View;
 
-  return (
+  const avatarContent = (
     <Container onPress={onPress} style={styles.wrap}>
       {uri ? (
         <Image source={{ uri }} style={styles.image} resizeMode="cover" />
@@ -22,6 +23,32 @@ function Avatar({ uri = null, label = '', size = 48, showOnline = false, onPress
       {showOnline ? <View style={styles.onlineDot} /> : null}
     </Container>
   );
+
+  if (cardEffect) {
+    return (
+      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <AnimatedProfileCard effect={cardEffect} size={size}>
+          {uri ? (
+            <Image source={{ uri }} style={styles.image} resizeMode="cover" />
+          ) : (
+            <LinearGradient colors={[theme.colors.primary, theme.colors.primaryStrong]} style={styles.fallback}>
+              <Text style={styles.initials}>{initials}</Text>
+            </LinearGradient>
+          )}
+        </AnimatedProfileCard>
+        {showOnline ? (
+          <View
+            style={[
+              styles.onlineDot,
+              { position: 'absolute', right: 0, bottom: 0, zIndex: 10 },
+            ]}
+          />
+        ) : null}
+      </View>
+    );
+  }
+
+  return avatarContent;
 }
 
 export default memo(Avatar);
