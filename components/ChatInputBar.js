@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Audio } from 'expo-av';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { getOptimizedAudioRecordingOptions } from '../services/media';
 import { pickChatImageFromLibrary, pickChatVideoFromLibrary } from '../services/imagePicker';
@@ -195,6 +196,7 @@ export default function ChatInputBar({
 
     try {
       setBusy(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       setText('');
       setShowEmojiPanel(false);
       stopTypingIfNeeded();
@@ -209,6 +211,7 @@ export default function ChatInputBar({
 
   const handlePickImage = async () => {
     setShowAttachMenu(false);
+    Haptics.selectionAsync().catch(() => {});
     if (disabled || mediaBusy || recording) {
       if (disabled) {
         Alert.alert('Action indisponible', disabledReason || 'Vous ne pouvez pas envoyer de média pour le moment.');
@@ -237,6 +240,7 @@ export default function ChatInputBar({
 
   const handlePickVideo = async () => {
     setShowAttachMenu(false);
+    Haptics.selectionAsync().catch(() => {});
     if (disabled || mediaBusy || recording) {
       if (disabled) Alert.alert('Action indisponible', disabledReason || 'Vous ne pouvez pas envoyer de vidéo pour le moment.');
       return;
@@ -325,6 +329,7 @@ export default function ChatInputBar({
     await createdRecording.startAsync();
     setRecordingDuration(0);
     setRecording(createdRecording);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   };
 
   const finishRecording = async ({ cancel = false } = {}) => {
@@ -348,6 +353,7 @@ export default function ChatInputBar({
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     await onSendVoice(uri, durationMillis, { replyTo });
   };
 
@@ -391,6 +397,7 @@ export default function ChatInputBar({
 
     try {
       setBusy(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
       await finishRecording({ cancel: true });
     } catch (error) {
       Alert.alert('Annulation impossible', error.message || 'Impossible d\u2019annuler ce vocal.');
@@ -400,6 +407,7 @@ export default function ChatInputBar({
   };
 
   const handlePickEmoji = (emoji) => {
+    Haptics.selectionAsync().catch(() => {});
     emitTyping(`${text}${emoji}`);
   };
 
