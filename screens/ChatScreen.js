@@ -31,6 +31,7 @@ import {
   pinConversationMessage,
   retryFailedMessage,
   searchMessagesInConversation,
+  sendFileMessage,
   sendImageMessage,
   sendPollMessage,
   sendStickerMessage,
@@ -611,6 +612,29 @@ export default function ChatScreen({ navigation, route }) {
     [chatId, profile]
   );
 
+  const handleFileSend = useCallback(
+    async (uri, fileName, mimeType, fileSize, options = {}) => {
+      try {
+        setUploadState({ active: true, progress: 0, label: 'Fichier…' });
+        await sendFileMessage({
+          chatId,
+          sender: profile,
+          localUri: uri,
+          fileName,
+          mimeType,
+          fileSize,
+          replyTo: options.replyTo || null,
+        });
+        setReplyTarget(null);
+      } catch (error) {
+        Alert.alert('Envoi impossible', error.message || "Le fichier n'a pas pu être envoyé.");
+      } finally {
+        setUploadState({ active: false, progress: 0, label: '' });
+      }
+    },
+    [chatId, profile]
+  );
+
   const handleOpenGallery = useCallback(() => {
     navigation.navigate('Gallery', { chatId });
   }, [chatId, navigation]);
@@ -871,6 +895,7 @@ export default function ChatScreen({ navigation, route }) {
         onSendVoice={handleVoiceSend}
         onSendImage={handleImageSend}
         onSendVideo={handleVideoSend}
+        onSendFile={handleFileSend}
         onSendPoll={handlePollSend}
         onCreateSticker={handleCreateSticker}
         onSendSticker={handleStickerSend}
