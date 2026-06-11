@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   LayoutAnimation,
   Platform,
@@ -31,7 +32,6 @@ import {
   pinConversationMessage,
   retryFailedMessage,
   searchMessagesInConversation,
-  sendFileMessage,
   sendImageMessage,
   sendPollMessage,
   sendStickerMessage,
@@ -64,6 +64,46 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const getMessageKey = (message) => message?.id || message?.clientId || null;
 
+function TypingDots() {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const makeAnim = (dot, delay) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, { toValue: -5, duration: 280, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 280, useNativeDriver: true }),
+          Animated.delay(400),
+        ])
+      );
+    const a1 = makeAnim(dot1, 0);
+    const a2 = makeAnim(dot2, 150);
+    const a3 = makeAnim(dot3, 300);
+    a1.start(); a2.start(); a3.start();
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
+  }, [dot1, dot2, dot3]);
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
+      {[dot1, dot2, dot3].map((dot, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: 2.5,
+            backgroundColor: 'rgba(201,149,107,0.75)',
+            transform: [{ translateY: dot }],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 export default function ChatScreen({ navigation, route }) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -93,6 +133,8 @@ export default function ChatScreen({ navigation, route }) {
   const listRef = useRef(null);
   const autoScrollRef = useRef(true);
   const latestMessagesRef = useRef([]);
+  const fabOpacity = useRef(new Animated.Value(0)).current;
+  const [atBottom, setAtBottom] = useState(true);
 
   useEffect(() => {
     const unsubscribeChat = subscribeToChatMeta(chatId, setChat);
@@ -117,6 +159,14 @@ export default function ChatScreen({ navigation, route }) {
     const interval = setInterval(() => setNowMs(Date.now()), 1500);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    Animated.timing(fabOpacity, {
+      toValue: atBottom ? 0 : 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [atBottom, fabOpacity]);
 
   useEffect(() => {
     if (!chat || chat.type !== 'private') {
@@ -612,29 +662,6 @@ export default function ChatScreen({ navigation, route }) {
     [chatId, profile]
   );
 
-  const handleFileSend = useCallback(
-    async (uri, fileName, mimeType, fileSize, options = {}) => {
-      try {
-        setUploadState({ active: true, progress: 0, label: 'Fichier…' });
-        await sendFileMessage({
-          chatId,
-          sender: profile,
-          localUri: uri,
-          fileName,
-          mimeType,
-          fileSize,
-          replyTo: options.replyTo || null,
-        });
-        setReplyTarget(null);
-      } catch (error) {
-        Alert.alert('Envoi impossible', error.message || "Le fichier n'a pas pu être envoyé.");
-      } finally {
-        setUploadState({ active: false, progress: 0, label: '' });
-      }
-    },
-    [chatId, profile]
-  );
-
   const handleOpenGallery = useCallback(() => {
     navigation.navigate('Gallery', { chatId });
   }, [chatId, navigation]);
@@ -783,7 +810,12 @@ export default function ChatScreen({ navigation, route }) {
         <View style={styles.metaBody}>
           <Text style={styles.title}>{headerTitle}</Text>
           <Text style={styles.headerSubtitle}>{subtitle}</Text>
-          {activeTypingUsers.length ? <Text style={styles.typingText}>{activeTypingUsers.join(', ')} écrit…</Text> : null}
+          {activeTypingUsers.length ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 }}>
+              <Text style={styles.typingText}>{activeTypingUsers.join(', ')}</Text>
+              <TypingDots />
+            </View>
+          ) : null}
         </View>
         {canOpenHeaderProfile ? <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} /> : null}
       </Pressable>
@@ -879,6 +911,7 @@ export default function ChatScreen({ navigation, route }) {
           }
         }}
         onScroll={handleListScroll}
+        onMomentumScrollEnd={handleListScroll}
         onScrollToIndexFailed={(info) => {
           setTimeout(() => {
             listRef.current?.scrollToOffset({ offset: Math.max(0, info.averageItemLength * info.index - 120), animated: true });
@@ -886,6 +919,42 @@ export default function ChatScreen({ navigation, route }) {
         }}
         scrollEventThrottle={16}
       />
+
+      {/* FAB scroll-to-bottom */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          right: 16,
+          bottom: 80,
+          opacity: fabOpacity,
+          transform: [{ scale: fabOpacity.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }],
+          zIndex: 10,
+          pointerEvents: atBottom ? 'none' : 'auto',
+        }}
+        pointerEvents={atBottom ? 'none' : 'auto'}
+      >
+        <Pressable
+          onPress={() => {
+            autoScrollRef.current = true;
+            listRef.current?.scrollToEnd({ animated: true });
+          }}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: '#C9956B',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOpacity: 0.35,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 3 },
+            elevation: 8,
+          }}
+        >
+          <Ionicons name="chevron-down" size={22} color="#fff" />
+        </Pressable>
+      </Animated.View>
 
       {online && pendingMineCount ? (<View style={styles.syncBar}><ActivityIndicator size="small" color={theme.colors.accent} /><Text style={styles.syncText}>Envoi en cours… {pendingMineCount} message(s).</Text></View>) : null}
       {failedMineCount ? <Text style={styles.errorText}>{failedMineCount} message(s) ont échoué. Touchez “Réessayer”.</Text> : null}
@@ -895,7 +964,6 @@ export default function ChatScreen({ navigation, route }) {
         onSendVoice={handleVoiceSend}
         onSendImage={handleImageSend}
         onSendVideo={handleVideoSend}
-        onSendFile={handleFileSend}
         onSendPoll={handlePollSend}
         onCreateSticker={handleCreateSticker}
         onSendSticker={handleStickerSend}
@@ -976,8 +1044,9 @@ const createStyles = (theme) =>
       flexDirection: 'row',
       gap: 14,
       alignItems: 'center',
-      marginBottom: 16,
-      padding: 14,
+      marginBottom: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
       borderRadius: theme.radius.lg,
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
@@ -1110,19 +1179,20 @@ const createStyles = (theme) =>
     title: {
       color: theme.colors.text,
       fontWeight: '800',
-      fontSize: 18,
+      fontSize: 17,
+      letterSpacing: -0.3,
     },
     headerSubtitle: {
-      color: theme.colors.accent,
-      marginTop: 4,
+      color: theme.colors.textMuted,
+      marginTop: 2,
       fontSize: 12,
-      fontWeight: '700',
+      fontWeight: '500',
     },
     typingText: {
-      color: theme.colors.textMuted,
-      marginTop: 4,
+      color: theme.colors.accent,
       fontSize: 12,
-      fontStyle: 'italic',
+      fontWeight: '600',
+      letterSpacing: 0.2,
     },
     messages: {
       flexGrow: 1,
