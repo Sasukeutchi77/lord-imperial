@@ -3,6 +3,8 @@ import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View } from
 import { Ionicons } from '@expo/vector-icons';
 import {
   extractFirstUrl,
+  formatFileSize,
+  getFileIconName,
   formatTime,
   getMessagePreviewLabel,
   getPollOptions,
@@ -127,6 +129,7 @@ function ChatBubble({
   const isImage = message.type === 'image' && Boolean(imageUri) && !isDeleted;
   const isVideo = message.type === 'video' && Boolean(imageUri) && !isDeleted;
   const isSticker = message.type === 'sticker' && Boolean(imageUri) && !isDeleted;
+  const isFile = message.type === 'file' && !isDeleted;
   const isPoll = message.type === 'poll' && Boolean(message.poll?.question);
   const disappearAfterMs = message.disappearAfterMs || null;
   const disappearAt = disappearAfterMs && message.createdAtMs ? message.createdAtMs + disappearAfterMs : null;
@@ -190,6 +193,20 @@ function ChatBubble({
       ) : null}
     </View>
   );
+
+  const fileNode = isFile ? (
+    <View style={styles.fileContainer}>
+      <View style={[styles.fileIconWrap, isMine ? styles.fileIconWrapMine : styles.fileIconWrapTheirs]}>
+        <Ionicons name={getFileIconName(message.mimeType, message.fileName)} size={22} color={isMine ? '#fff' : theme.colors.primary} />
+      </View>
+      <View style={styles.fileInfo}>
+        <Text style={[styles.fileName, !isMine && styles.fileNameTheirs]} numberOfLines={2}>{message.fileName || message.text || 'Fichier'}</Text>
+        {message.fileSize ? (
+          <Text style={[styles.fileSize, !isMine && styles.fileSizeTheirs]}>{formatFileSize(message.fileSize)}</Text>
+        ) : null}
+      </View>
+    </View>
+  ) : null;
 
   const retryAction = isMine && message.status === 'failed' ? (
     <Pressable onPress={() => onRetry?.(message)} style={styles.retryChip}>
@@ -281,7 +298,7 @@ function ChatBubble({
   ) : null;
 
   // For text messages: inline footer floats bottom-right (WhatsApp style)
-  const isTextOnly = !isAudio && !isImage && !isVideo && !isSticker && !isPoll;
+  const isTextOnly = !isAudio && !isImage && !isVideo && !isSticker && !isPoll && !isFile;
 
   const contentNode = (
     <>
@@ -292,6 +309,7 @@ function ChatBubble({
       {isVideo ? videoNode : null}
       {isSticker ? stickerNode : null}
       {isPoll ? pollNode : null}
+      {isFile ? fileNode : null}
 
       {isTextOnly ? (
         // Text + footer on the same "line flow" — like WhatsApp
@@ -333,7 +351,9 @@ function ChatBubble({
                       ? [styles.imageWrap, bubbleStyle]
                       : isSticker
                         ? [styles.stickerWrap, bubbleStyle, styles.stickerBubble]
-                        : bubbleStyle
+                        : isFile
+                          ? [styles.fileBubble, bubbleStyle]
+                          : bubbleStyle
               }
             >
               {contentNode}
@@ -386,6 +406,8 @@ const areEqual = (previous, next) => {
     JSON.stringify(previousMessage.reactions || {}) === JSON.stringify(nextMessage.reactions || {}) &&
     JSON.stringify(previousMessage.poll || null) === JSON.stringify(nextMessage.poll || null) &&
     JSON.stringify(previousMessage.sticker || null) === JSON.stringify(nextMessage.sticker || null) &&
+    previousMessage.fileName === nextMessage.fileName &&
+    previousMessage.fileSize === nextMessage.fileSize &&
     previous.previousMessage?.id === next.previousMessage?.id &&
     previous.nextMessage?.id === next.nextMessage?.id &&
     (previousMessage.delivery?.deliveredTo?.length || 0) === (nextMessage.delivery?.deliveredTo?.length || 0) &&
@@ -800,6 +822,54 @@ const createStyles = (theme) =>
       fontWeight: '600',
     },
     pollSummaryTheirs: {
+      color: theme.colors.textMuted,
+    },
+    fileBubble: {
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    fileContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minWidth: 160,
+      maxWidth: 240,
+      paddingVertical: 4,
+    },
+    fileIconWrap: {
+      width: 42,
+      height: 42,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      flexShrink: 0,
+    },
+    fileIconWrapMine: {
+      backgroundColor: 'rgba(255,255,255,0.18)',
+    },
+    fileIconWrapTheirs: {
+      backgroundColor: theme.colors.surfaceMuted,
+    },
+    fileInfo: {
+      flex: 1,
+      minWidth: 0,
+      gap: 2,
+    },
+    fileName: {
+      color: '#fff',
+      fontSize: 13,
+      fontWeight: '600',
+      lineHeight: 17,
+    },
+    fileNameTheirs: {
+      color: theme.colors.text,
+    },
+    fileSize: {
+      color: 'rgba(255,255,255,0.65)',
+      fontSize: 11,
+    },
+    fileSizeTheirs: {
       color: theme.colors.textMuted,
     },
   });
