@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../components/ScreenContainer';
 import ChatListItem from '../components/ChatListItem';
 import { subscribeToChats } from '../services/chat';
-import { subscribeToStories, groupStoriesByAuthor } from '../services/stories';
+import { subscribeToStories, groupStoriesByAuthor, subscribeToStoryNotifications, markStoryNotificationsRead } from '../services/stories';
 import { subscribeToNetworkStatus } from '../services/network';
 import { getNotificationPermissionStatus, registerForPushNotifications } from '../services/notifications';
 import { getMemoryChats } from '../services/offlineStore';
@@ -121,6 +121,12 @@ export default function HomeScreen({ navigation, mode = 'groups' }) {
   }, [mode, profile.uid]);
 
   useEffect(() => {
+    if (!profile?.uid) return undefined;
+    const unsub = subscribeToStoryNotifications({ uid: profile.uid, callback: setStoryNotifs });
+    return () => unsub?.();
+  }, [profile?.uid]);
+
+  useEffect(() => {
     let active = true;
 
     getNotificationPermissionStatus()
@@ -229,6 +235,7 @@ export default function HomeScreen({ navigation, mode = 'groups' }) {
   const showNotificationBanner = !notificationState.granted && mode !== 'contacts';
 
   const [storyGroups, setStoryGroups] = useState([]);
+  const [storyNotifs, setStoryNotifs] = useState([]);
 
   return (
     <ScreenContainer>
@@ -242,6 +249,25 @@ export default function HomeScreen({ navigation, mode = 'groups' }) {
             <Text style={styles.headerSub}>{config.subtitle}</Text>
           </View>
         </View>
+        {/* Story notification bell */}
+        {(() => {
+          const unreadCount = storyNotifs.filter((n) => !n.read).length;
+          return unreadCount > 0 ? (
+            <Pressable
+              onPress={() => {
+                markStoryNotificationsRead(profile.uid).catch(() => {});
+                setStoryNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+              }}
+              style={styles.notifBell}
+              hitSlop={8}
+            >
+              <Ionicons name="notifications" size={22} color={theme.colors.primary} />
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            </Pressable>
+          ) : null;
+        })()}
         <View style={[styles.onlinePill, !online && styles.offlinePill]}>
           <View style={[styles.dot, !online && styles.offlineDot]} />
           <Text style={[styles.onlineText, !online && styles.offlineText]}>{online ? 'En ligne' : 'Hors ligne'}</Text>
@@ -282,7 +308,10 @@ export default function HomeScreen({ navigation, mode = 'groups' }) {
               <Pressable
                 key={group.authorId}
                 style={styles.storyBubble}
-                onPress={() => navigation.navigate('Stories', { authorId: group.authorId })}
+                onPress={() => {
+                  const idx = storyGroups.findIndex((g) => g.authorId === group.authorId);
+                  navigation.navigate('Stories', { groups: storyGroups, initialGroupIndex: Math.max(0, idx) });
+                }}
               >
                 <View style={[styles.storyRing, hasUnseen && styles.storyRingUnseen]}>
                   {avatar ? (
@@ -455,6 +484,32 @@ const createStyles = (theme) =>
       fontSize: 13,
       fontWeight: '600',
       marginTop: 1,
+    },
+    notifBell: {
+      position: 'relative',
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.colors.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    notifBadge: {
+      position: 'absolute',
+      top: 1,
+      right: 1,
+      minWidth: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: theme.colors.danger || '#FF4D6D',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 3,
+    },
+    notifBadgeText: {
+      color: '#fff',
+      fontSize: 9,
+      fontWeight: '900',
     },
     onlinePill: {
       flexDirection: 'row',
