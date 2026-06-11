@@ -66,6 +66,7 @@ const buildUserProfilePayload = ({
   displayName = '',
   bio = '',
   avatar = null,
+  profileCard = null,
   currentProfile = null,
 }) => {
   const normalizedEmail = normalizeEmail(email);
@@ -81,6 +82,7 @@ const buildUserProfilePayload = ({
     displayName: normalizedDisplayName,
     bio: normalizedBio,
     avatar: avatar || currentProfile?.avatar || buildAvatarFromUsername(avatarSeed),
+    profileCard: profileCard !== undefined ? profileCard : (currentProfile?.profileCard || null),
     activeChatId: currentProfile?.activeChatId || null,
     isOnline: true,
     lastSeen: serverTimestamp(),
@@ -108,15 +110,15 @@ const mapFirebaseAuthError = (error) => {
     case 'auth/network-request-failed':
       return 'Connexion réseau impossible. Vérifiez votre accès Internet.';
     case 'auth/operation-not-allowed':
-      return 'La connexion email/mot de passe n’est pas activée dans Firebase Authentication.';
+      return 'La connexion email/mot de passe n\'est pas activée dans Firebase Authentication.';
     case 'username/already-taken':
-      return 'Ce nom d’utilisateur est déjà pris.';
+      return 'Ce nom d\'utilisateur est déjà pris.';
     case 'profile/display-name-invalid':
       return 'Le nom affiché doit contenir au moins 2 caractères.';
     case 'profile/bio-invalid':
       return 'La bio doit contenir 160 caractères maximum.';
     default:
-      return error?.message || 'Une erreur d’authentification est survenue.';
+      return error?.message || 'Une erreur d\'authentification est survenue.';
   }
 };
 
@@ -188,6 +190,7 @@ const ensureUserProfile = async (user) => {
         displayName: currentData?.displayName || currentData?.username || '',
         bio: currentData?.bio || '',
         avatar: currentData?.avatar || null,
+        profileCard: currentData?.profileCard || null,
         currentProfile: currentData,
       }),
       createdAt: currentData?.createdAt || serverTimestamp(),
@@ -293,7 +296,7 @@ export const reserveUsername = async (uid, rawUsername) => {
         const usernameOwner = usernameSnap.data()?.uid;
 
         if (usernameOwner !== uid) {
-          throw createFriendlyError('Ce nom d’utilisateur est déjà pris.', 'username/already-taken', 409);
+          throw createFriendlyError('Ce nom d\'utilisateur est déjà pris.', 'username/already-taken', 409);
         }
       }
 
@@ -312,6 +315,7 @@ export const reserveUsername = async (uid, rawUsername) => {
               displayName: existingUserData.displayName || username,
               bio: existingUserData.bio || '',
               avatar: existingUserData.avatar || null,
+              profileCard: existingUserData.profileCard || null,
               currentProfile: existingUserData,
             }),
             createdAt: serverTimestamp(),
@@ -338,6 +342,7 @@ export const reserveUsername = async (uid, rawUsername) => {
             displayName: existingUserData.displayName || username,
             bio: existingUserData.bio || '',
             avatar: existingUserData.avatar || null,
+            profileCard: existingUserData.profileCard || null,
             currentProfile: existingUserData,
           }),
         },
@@ -408,6 +413,10 @@ export const updateUserProfile = async ({ uid, currentProfile, values }) => {
     nextAvatar = await uploadProfileImage({ uid, uri: values.avatarUri });
   }
 
+  // Resolve profile card — undefined means "no change", null means "remove card"
+  const nextProfileCard =
+    values?.profileCard !== undefined ? values.profileCard : (currentProfile?.profileCard || null);
+
   const nextUsername = usernameValidation.normalized;
   const nextUsernameKey = nextUsername.slice(1);
   const previousUsername = currentProfile?.username || null;
@@ -421,7 +430,7 @@ export const updateUserProfile = async ({ uid, currentProfile, values }) => {
     const usernameSnap = await transaction.get(nextUsernameRef);
 
     if (usernameSnap.exists() && usernameSnap.data()?.uid !== uid) {
-      throw createFriendlyError('Ce nom d’utilisateur est déjà pris.', 'username/already-taken', 409);
+      throw createFriendlyError('Ce nom d\'utilisateur est déjà pris.', 'username/already-taken', 409);
     }
 
     if (previousUsernameKey && previousUsernameKey !== nextUsernameKey) {
@@ -445,6 +454,7 @@ export const updateUserProfile = async ({ uid, currentProfile, values }) => {
           displayName: nextDisplayName || nextUsername,
           bio: nextBio,
           avatar: nextAvatar || existingUser.avatar || buildAvatarFromUsername(nextUsername),
+          profileCard: nextProfileCard,
           currentProfile: existingUser,
         }),
         avatarUpdatedAtMs: nextAvatar !== currentProfile?.avatar ? Date.now() : existingUser.avatarUpdatedAtMs || null,
