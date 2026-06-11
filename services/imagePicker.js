@@ -1,4 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 
 const ensureMediaPermission = async (errorMessage = 'Autorisez l\u2019acc\u00e8s \u00e0 votre galerie pour choisir une image.') => {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -122,5 +123,31 @@ export const takeStickerPhoto = async () => {
     width: asset.width || null,
     height: asset.height || null,
     fileSize: asset.fileSize || null,
+  };
+};
+
+export const pickDocumentFromLibrary = async () => {
+  const result = await DocumentPicker.getDocumentAsync({
+    type: ['*/*'],
+    copyToCacheDirectory: true,
+    multiple: false,
+  });
+
+  if (result.canceled || !result.assets?.length) {
+    return null;
+  }
+
+  const asset = result.assets[0];
+  const MAX_SIZE = 50 * 1024 * 1024;
+
+  if (asset.size && asset.size > MAX_SIZE) {
+    throw new Error('Le fichier est trop volumineux. Choisissez un fichier de moins de 50 Mo.');
+  }
+
+  return {
+    uri: asset.uri,
+    mimeType: asset.mimeType || 'application/octet-stream',
+    fileName: asset.name || `document-${Date.now()}`,
+    fileSize: asset.size || null,
   };
 };
