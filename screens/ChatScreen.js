@@ -21,6 +21,7 @@ import ChatBubble from '../components/ChatBubble';
 import ChatInputBar from '../components/ChatInputBar';
 import Avatar from '../components/Avatar';
 import MessageActionSheet from '../components/MessageActionSheet';
+import ReportSheet from '../components/ReportSheet';
 import FullscreenImageViewer from '../components/FullscreenImageViewer';
 import { db } from '../services/firebase';
 import {
@@ -123,6 +124,7 @@ export default function ChatScreen({ navigation, route }) {
   const [nowMs, setNowMs] = useState(Date.now());
   const [replyTarget, setReplyTarget] = useState(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
+  const [reportTarget, setReportTarget] = useState(null);
   const [viewerImageUri, setViewerImageUri] = useState(null);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -782,6 +784,7 @@ export default function ChatScreen({ navigation, route }) {
   const selectedIsPinned = Boolean(selectedMessage && chat?.pinnedMessage?.messageId === selectedMessage.id);
   const selectedProfile = selectedMessage?.senderSnapshot || chat?.memberDetails?.[selectedMessage?.senderId] || null;
   const canViewSelectedProfile = Boolean(selectedMessage?.senderId);
+  const canReport = Boolean(selectedMessage?.senderId && selectedMessage.senderId !== profile.uid && selectedMessage.type !== 'system');
 
   if (loading && !chat) {
     return (
@@ -995,9 +998,23 @@ export default function ChatScreen({ navigation, route }) {
           setSelectedMessage(null);
           openUserProfile(selectedMessage?.senderId, selectedProfile);
         } : undefined}
+        canReport={canReport}
+        onReport={canReport ? () => {
+          setReportTarget({ userId: selectedMessage.senderId, messageId: selectedMessage.id });
+          setSelectedMessage(null);
+        } : undefined}
       />
 
       <FullscreenImageViewer visible={Boolean(viewerImageUri)} imageUri={viewerImageUri} onClose={() => setViewerImageUri(null)} />
+
+      <ReportSheet
+        visible={Boolean(reportTarget)}
+        reporterId={profile.uid}
+        reportedUserId={reportTarget?.userId || ''}
+        messageId={reportTarget?.messageId || null}
+        chatId={chatId}
+        onClose={() => setReportTarget(null)}
+      />
     </ScreenContainer>
   );
 }

@@ -10,12 +10,14 @@ export default function MessageActionSheet({
   canDelete = false,
   canPin = false,
   isPinned = false,
+  canReport = false,
   onClose,
   onReact,
   onReply,
   onDelete,
   onViewProfile,
   onTogglePin,
+  onReport,
 }) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -51,6 +53,13 @@ export default function MessageActionSheet({
             <Pressable style={styles.actionRow} onPress={onViewProfile}>
               <Ionicons name="person-circle-outline" size={18} color={theme.colors.text} />
               <Text style={styles.actionText}>Voir le profil</Text>
+            </Pressable>
+          ) : null}
+
+          {canReport ? (
+            <Pressable style={styles.actionRow} onPress={onReport}>
+              <Ionicons name="flag-outline" size={18} color={theme.colors.danger} />
+              <Text style={[styles.actionText, styles.deleteText]}>Signaler</Text>
             </Pressable>
           ) : null}
 

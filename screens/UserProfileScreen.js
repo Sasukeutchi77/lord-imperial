@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../components/ScreenContainer';
 import Avatar from '../components/Avatar';
 import PrimaryButton from '../components/PrimaryButton';
+import ReportSheet from '../components/ReportSheet';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../services/firebase';
 import { ensurePrivateChat } from '../services/chat';
@@ -19,6 +20,7 @@ export default function UserProfileScreen({ navigation, route }) {
   const [user, setUser] = useState(initialProfile);
   const [loading, setLoading] = useState(!initialProfile);
   const [openingChat, setOpeningChat] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   useEffect(() => {
     if (!userId) return undefined;
@@ -138,9 +140,22 @@ export default function UserProfileScreen({ navigation, route }) {
             <Text style={styles.selfPillText}>C'est votre profil</Text>
           </Pressable>
         ) : (
-          <PrimaryButton title="Envoyer un message privé" onPress={handleOpenPrivateChat} loading={openingChat} />
+          <>
+            <PrimaryButton title="Envoyer un message privé" onPress={handleOpenPrivateChat} loading={openingChat} />
+            <Pressable style={styles.reportButton} onPress={() => setShowReport(true)}>
+              <Ionicons name="flag-outline" size={16} color={theme.colors.danger} />
+              <Text style={styles.reportButtonText}>Signaler cet utilisateur</Text>
+            </Pressable>
+          </>
         )}
       </ScrollView>
+
+      <ReportSheet
+        visible={showReport}
+        reporterId={profile.uid}
+        reportedUserId={userId || ''}
+        onClose={() => setShowReport(false)}
+      />
     </ScreenContainer>
   );
 }
@@ -273,5 +288,22 @@ const createStyles = (theme) =>
     selfPillText: {
       color: theme.colors.text,
       fontWeight: '700',
+    },
+    reportButton: {
+      minHeight: 48,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.surfaceMuted,
+      borderWidth: 1,
+      borderColor: theme.colors.danger + '44',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      flexDirection: 'row',
+      marginTop: 8,
+    },
+    reportButtonText: {
+      color: theme.colors.danger,
+      fontWeight: '700',
+      fontSize: 14,
     },
   });
