@@ -1,15 +1,20 @@
 import React, { memo, useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { getInitials } from '../utils/helpers';
 import { useAppTheme } from '../utils/theme';
 import AnimatedProfileCard from './AnimatedProfileCard';
 
-function Avatar({ uri = null, label = '', size = 48, showOnline = false, onPress = null, cardEffect = null }) {
+const CERTIFIED_BADGE_COLOR = '#F5C518';
+
+function Avatar({ uri = null, label = '', size = 48, showOnline = false, onPress = null, cardEffect = null, isCertified = false }) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, size), [theme, size]);
   const initials = useMemo(() => getInitials(label), [label]);
   const Container = onPress ? Pressable : View;
+
+  const certifiedBadgeSize = Math.max(14, Math.round(size * 0.28));
 
   const avatarContent = (
     <Container onPress={onPress} style={styles.wrap}>
@@ -21,6 +26,11 @@ function Avatar({ uri = null, label = '', size = 48, showOnline = false, onPress
         </LinearGradient>
       )}
       {showOnline ? <View style={styles.onlineDot} /> : null}
+      {isCertified ? (
+        <View style={[styles.certifiedBadge, { width: certifiedBadgeSize, height: certifiedBadgeSize, borderRadius: certifiedBadgeSize / 2 }]}>
+          <Ionicons name="checkmark" size={Math.max(8, Math.round(certifiedBadgeSize * 0.62))} color="#0D1117" />
+        </View>
+      ) : null}
     </Container>
   );
 
@@ -43,6 +53,24 @@ function Avatar({ uri = null, label = '', size = 48, showOnline = false, onPress
               { position: 'absolute', right: 0, bottom: 0, zIndex: 10 },
             ]}
           />
+        ) : null}
+        {isCertified ? (
+          <View
+            style={[
+              styles.certifiedBadge,
+              {
+                position: 'absolute',
+                left: cardEffect ? 14 : 1,
+                bottom: cardEffect ? 14 : 1,
+                zIndex: 10,
+                width: certifiedBadgeSize,
+                height: certifiedBadgeSize,
+                borderRadius: certifiedBadgeSize / 2,
+              },
+            ]}
+          >
+            <Ionicons name="checkmark" size={Math.max(8, Math.round(certifiedBadgeSize * 0.62))} color="#0D1117" />
+          </View>
         ) : null}
       </View>
     );
@@ -90,5 +118,15 @@ const createStyles = (theme, size) =>
       borderWidth: 2,
       borderColor: theme.colors.background,
       backgroundColor: theme.colors.success,
+    },
+    certifiedBadge: {
+      position: 'absolute',
+      left: 1,
+      bottom: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: CERTIFIED_BADGE_COLOR,
+      borderWidth: 2,
+      borderColor: theme.colors.background,
     },
   });

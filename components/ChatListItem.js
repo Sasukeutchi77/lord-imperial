@@ -2,8 +2,10 @@ import React, { memo, useMemo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Avatar from './Avatar';
-import { formatLastSeen, formatTime } from '../utils/helpers';
+import { formatLastSeen, formatTime, getCertificationStatus } from '../utils/helpers';
 import { useAppTheme } from '../utils/theme';
+
+const CERTIFIED_COLOR = '#F5C518';
 
 function ChatListItem({ chat, currentUser, onPress, online = true }) {
   const theme = useAppTheme();
@@ -25,8 +27,8 @@ function ChatListItem({ chat, currentUser, onPress, online = true }) {
   const preview = chat.lastMessage || 'Commencer la conversation';
   const badgeIcon = chat.type === 'channel' ? 'megaphone' : chat.type === 'group' ? 'people' : null;
 
-  // Show animated card only for private chats (where the other user has one)
   const cardEffect = chat.type === 'private' ? (otherMember?.profileCard || null) : null;
+  const { isCertified: otherCertified } = useMemo(() => getCertificationStatus(otherMember || {}), [otherMember]);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
@@ -37,6 +39,7 @@ function ChatListItem({ chat, currentUser, onPress, online = true }) {
           size={64}
           showOnline={activeDot}
           cardEffect={cardEffect}
+          isCertified={chat.type === 'private' ? otherCertified : false}
         />
         {badgeIcon ? (
           <View style={[styles.kindBadge, cardEffect && styles.kindBadgeWithCard]}>
@@ -49,6 +52,11 @@ function ChatListItem({ chat, currentUser, onPress, online = true }) {
           <View style={styles.titleLine}>
             <Text style={styles.title} numberOfLines={1}>{title}</Text>
             {chat.type === 'channel' ? <Ionicons name="checkmark-circle" size={16} color={theme.colors.primary} /> : null}
+            {chat.type === 'private' && otherCertified ? (
+              <View style={styles.certifiedPill}>
+                <Ionicons name="checkmark" size={10} color="#0D1117" />
+              </View>
+            ) : null}
           </View>
           <Text style={styles.time}>{timeLabel}</Text>
         </View>
@@ -203,5 +211,13 @@ const createStyles = (theme) =>
       color: '#0D1117',
       fontSize: 12,
       fontWeight: '800',
+    },
+    certifiedPill: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: CERTIFIED_COLOR,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
   });

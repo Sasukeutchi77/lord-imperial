@@ -24,7 +24,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../utils/theme';
 import { logoutUser, updateUserProfile } from '../services/auth';
 import { auth, db } from '../services/firebase';
-import { formatLastSeen, normalizeBio, normalizeDisplayName, validateUsername } from '../utils/helpers';
+import { formatLastSeen, getCertificationStatus, normalizeBio, normalizeDisplayName, toDate, validateUsername } from '../utils/helpers';
 import { pickImageFromLibrary } from '../services/imagePicker';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -336,6 +336,43 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
+        {/* Certification */}
+        {(() => {
+          const cert = getCertificationStatus(profile || {});
+          const certDate = cert.isCertified ? toDate(profile?.certifiedAt) : null;
+          return (
+            <View style={[styles.certCard, cert.isCertified && styles.certCardActive]}>
+              <View style={styles.certHeader}>
+                <View style={[styles.certIconWrap, cert.isCertified && styles.certIconWrapActive]}>
+                  <Ionicons name="checkmark" size={18} color={cert.isCertified ? '#0D1117' : theme.colors.textMuted} />
+                </View>
+                <View style={styles.certTextWrap}>
+                  <Text style={[styles.certTitle, cert.isCertified && styles.certTitleActive]}>
+                    {cert.isCertified ? 'Compte certifié' : 'Certification en cours'}
+                  </Text>
+                  <Text style={styles.certSubtitle}>
+                    {cert.isCertified
+                      ? certDate
+                        ? `Certifié le ${certDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}`
+                        : 'Votre compte est certifié'
+                      : `${cert.daysElapsed} / 30 jours d'utilisation`}
+                  </Text>
+                </View>
+              </View>
+              {!cert.isCertified && (
+                <View style={styles.certProgressWrap}>
+                  <View style={styles.certProgressTrack}>
+                    <View style={[styles.certProgressBar, { width: `${Math.round(cert.progress * 100)}%` }]} />
+                  </View>
+                  <Text style={styles.certProgressLabel}>
+                    {cert.daysRemaining === 0 ? 'Vérification en cours…' : `${cert.daysRemaining} jour${cert.daysRemaining > 1 ? 's' : ''} restant${cert.daysRemaining > 1 ? 's' : ''}`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        })()}
+
         {/* Tabs */}
         <View style={styles.tabsRow}>
           <View style={[styles.profileTab, styles.activeTab]}>
@@ -593,6 +630,74 @@ const createStyles = (theme) =>
     },
     photoButtonText: { color: theme.colors.textSoft, fontSize: 13, fontWeight: '600' },
     photoButtonTextActive: { color: theme.colors.success },
+    certCard: {
+      marginHorizontal: 16,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.md,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      gap: 12,
+    },
+    certCardActive: {
+      borderColor: '#F5C518',
+      backgroundColor: 'rgba(245,197,24,0.06)',
+    },
+    certHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    certIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: theme.colors.surfaceMuted,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    certIconWrapActive: {
+      backgroundColor: '#F5C518',
+      borderColor: '#F5C518',
+    },
+    certTextWrap: {
+      flex: 1,
+      gap: 3,
+    },
+    certTitle: {
+      color: theme.colors.textSoft,
+      fontWeight: '800',
+      fontSize: 15,
+    },
+    certTitleActive: {
+      color: '#F5C518',
+    },
+    certSubtitle: {
+      color: theme.colors.textMuted,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    certProgressWrap: {
+      gap: 6,
+    },
+    certProgressTrack: {
+      height: 5,
+      borderRadius: 99,
+      backgroundColor: theme.colors.surfaceMuted,
+      overflow: 'hidden',
+    },
+    certProgressBar: {
+      height: 5,
+      borderRadius: 99,
+      backgroundColor: '#F5C518',
+    },
+    certProgressLabel: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
+      fontWeight: '600',
+    },
     tabsRow: {
       flexDirection: 'row',
       marginHorizontal: 16,

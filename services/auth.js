@@ -18,6 +18,7 @@ import { compressImageBeforeUpload } from './media';
 import { uploadImageToCloudinary } from './cloudinary';
 import {
   buildAvatarFromUsername,
+  getCertificationStatus,
   getUserLabel,
   normalizeBio,
   normalizeDisplayName,
@@ -483,3 +484,21 @@ export const getUserProfile = async (uid) => {
 };
 
 export const getProfileHeadline = (profile) => getUserLabel(profile || {});
+
+export const checkAndGrantCertification = async (uid, profile) => {
+  if (!uid || !profile || profile.isCertified) return;
+
+  const { eligible } = getCertificationStatus(profile);
+  if (!eligible) return;
+
+  await setDoc(
+    doc(db, 'users', uid),
+    {
+      isCertified: true,
+      certifiedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      updatedAtMs: Date.now(),
+    },
+    { merge: true }
+  );
+};

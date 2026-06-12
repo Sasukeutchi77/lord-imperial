@@ -109,6 +109,7 @@ function ChatBubble({
   nextMessage = null,
   senderLabel = '',
   senderAvatar = null,
+  senderCertified = false,
   onPressSender,
   onSwipeReply,
   onPressImage,
@@ -217,8 +218,13 @@ function ChatBubble({
   ) : null;
 
   const senderNode = !isMine && groupShape !== 'middle' && groupShape !== 'end' && senderLabel ? (
-    <Pressable onPress={onPressSender}>
+    <Pressable onPress={onPressSender} style={styles.senderRow}>
       <Text style={styles.senderLabel}>{senderLabel}</Text>
+      {senderCertified ? (
+        <View style={styles.senderCertifiedBadge}>
+          <Ionicons name="checkmark" size={9} color="#0D1117" />
+        </View>
+      ) : null}
     </Pressable>
   ) : null;
 
@@ -594,11 +600,24 @@ const createStyles = (theme) =>
       borderWidth: 1,
       borderColor: theme.colors.danger,
     },
+    senderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      marginBottom: 3,
+    },
     senderLabel: {
       color: theme.colors.accent,
       fontSize: 12,
       fontWeight: '700',
-      marginBottom: 3,
+    },
+    senderCertifiedBadge: {
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      backgroundColor: '#F5C518',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     replyBlock: {
       flexDirection: 'row',

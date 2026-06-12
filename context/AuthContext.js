@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db, firebaseReady } from '../services/firebase';
+import { checkAndGrantCertification } from '../services/auth';
 import { getCachedProfile, preloadCacheForUser, saveCachedProfile } from '../services/offlineStore';
 
 const AuthContext = createContext(null);
@@ -53,6 +54,7 @@ export const AuthProvider = ({ children }) => {
             setProfile(nextProfile);
             if (nextProfile) {
               await saveCachedProfile(user.uid, nextProfile);
+              checkAndGrantCertification(user.uid, nextProfile).catch(() => {});
             }
             setLoading(false);
           },

@@ -185,6 +185,37 @@ export const getFileIconName = (mimeType = '', fileName = '') => {
   return 'document-attach';
 };
 
+const CERTIFICATION_DAYS = 30;
+
+export const getCertificationStatus = (profile = {}) => {
+  const createdAt = toDate(profile?.createdAt);
+  if (!createdAt) {
+    return {
+      isCertified: Boolean(profile?.isCertified),
+      daysRemaining: CERTIFICATION_DAYS,
+      progress: 0,
+      eligible: false,
+      daysElapsed: 0,
+    };
+  }
+
+  const nowMs = Date.now();
+  const elapsedMs = nowMs - createdAt.getTime();
+  const requiredMs = CERTIFICATION_DAYS * 24 * 60 * 60 * 1000;
+  const progress = Math.min(1, Math.max(0, elapsedMs / requiredMs));
+  const daysElapsed = Math.floor(elapsedMs / (24 * 60 * 60 * 1000));
+  const daysRemaining = Math.max(0, CERTIFICATION_DAYS - daysElapsed);
+  const eligible = elapsedMs >= requiredMs;
+
+  return {
+    isCertified: Boolean(profile?.isCertified) || eligible,
+    eligible,
+    daysRemaining,
+    daysElapsed: Math.min(daysElapsed, CERTIFICATION_DAYS),
+    progress,
+  };
+};
+
 export const EMOJI_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '👏', '🙏', '😍', '🥰', '🤩', '😎', '🥳', '🤔', '💯', '🙌', '💪', '✨'];
 
 export const EMOJI_CATEGORIES = [

@@ -739,6 +739,7 @@ export default function ChatScreen({ navigation, route }) {
           nextMessage={nextMessage}
           senderLabel={senderLabel}
           senderAvatar={senderProfile?.avatar || null}
+          senderCertified={Boolean(senderProfile?.isCertified)}
           isMine={item.senderId === profile.uid}
           highlighted={activeSearchResultId === getMessageKey(item)}
           canDelete={item.type !== 'system' && item.type !== 'deleted' && (item.senderId === profile.uid || admin)}
