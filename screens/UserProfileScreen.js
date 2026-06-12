@@ -8,7 +8,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../services/firebase';
 import { ensurePrivateChat } from '../services/chat';
-import { formatLastSeen, getUserLabel } from '../utils/helpers';
+import { formatLastSeen, getCertificationStatus, getUserLabel } from '../utils/helpers';
 import { useAppTheme } from '../utils/theme';
 
 export default function UserProfileScreen({ navigation, route }) {
@@ -79,6 +79,16 @@ export default function UserProfileScreen({ navigation, route }) {
                  cardEffect === 'galaxy' ? '🌌 Galaxy' :
                  cardEffect === 'demonic' ? '😈 Démoniaque' : cardEffect}
               </Text>
+            </View>
+          ) : null}
+
+          {/* Certification badge */}
+          {getCertificationStatus(user || {}).isCertified ? (
+            <View style={styles.certBadge}>
+              <View style={styles.certBadgeIcon}>
+                <Ionicons name="checkmark" size={11} color="#0D1117" />
+              </View>
+              <Text style={styles.certBadgeText}>Compte certifié</Text>
             </View>
           ) : null}
 
@@ -158,6 +168,30 @@ const createStyles = (theme) =>
     },
     cardBadgeText: {
       color: theme.colors.primary,
+      fontWeight: '800',
+      fontSize: 13,
+    },
+    certBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      backgroundColor: 'rgba(245,197,24,0.10)',
+      borderWidth: 1,
+      borderColor: 'rgba(245,197,24,0.35)',
+      borderRadius: 99,
+      paddingHorizontal: 13,
+      paddingVertical: 6,
+    },
+    certBadgeIcon: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: '#F5C518',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    certBadgeText: {
+      color: '#F5C518',
       fontWeight: '800',
       fontSize: 13,
     },
