@@ -2,7 +2,7 @@ import React, { memo, useMemo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Avatar from './Avatar';
-import { formatLastSeen, formatTime, getCertificationStatus } from '../utils/helpers';
+import { formatLastSeen, formatTime, getCertificationStatus, getUserLevel } from '../utils/helpers';
 import { useAppTheme } from '../utils/theme';
 
 const CERTIFIED_COLOR = '#F5C518';
@@ -29,6 +29,7 @@ function ChatListItem({ chat, currentUser, onPress, online = true }) {
 
   const cardEffect = chat.type === 'private' ? (otherMember?.profileCard || null) : null;
   const { isCertified: otherCertified } = useMemo(() => getCertificationStatus(otherMember || {}), [otherMember]);
+  const { color: otherLevelColor } = useMemo(() => getUserLevel(otherMember || {}), [otherMember]);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
@@ -40,6 +41,7 @@ function ChatListItem({ chat, currentUser, onPress, online = true }) {
           showOnline={activeDot}
           cardEffect={cardEffect}
           isCertified={chat.type === 'private' ? otherCertified : false}
+          levelColor={chat.type === 'private' ? otherLevelColor : null}
         />
         {badgeIcon ? (
           <View style={[styles.kindBadge, cardEffect && styles.kindBadgeWithCard]}>

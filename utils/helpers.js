@@ -185,6 +185,38 @@ export const getFileIconName = (mimeType = '', fileName = '') => {
   return 'document-attach';
 };
 
+const LEVELS = [
+  { name: 'Légendaire', minMessages: 1000, color: '#9B59B6', icon: '👑', rank: 4 },
+  { name: 'Or',         minMessages: 500,  color: '#FFD700', icon: '🥇', rank: 3 },
+  { name: 'Argent',     minMessages: 100,  color: '#C0C0C0', icon: '🥈', rank: 2 },
+  { name: 'Bronze',     minMessages: 0,    color: '#CD7F32', icon: '🥉', rank: 1 },
+];
+
+export const getUserLevel = (profile = {}) => {
+  const count = Number(profile?.messageCount) || 0;
+  const current = LEVELS.find((l) => count >= l.minMessages) || LEVELS[LEVELS.length - 1];
+  const currentIndex = LEVELS.indexOf(current);
+  const nextLevel = currentIndex > 0 ? LEVELS[currentIndex - 1] : null;
+
+  let progress;
+  if (!nextLevel) {
+    progress = 1;
+  } else {
+    const prevMin = current.minMessages;
+    const nextMin = nextLevel.minMessages;
+    progress = Math.min(1, Math.max(0, (count - prevMin) / (nextMin - prevMin)));
+  }
+
+  return {
+    ...current,
+    count,
+    nextLevel: nextLevel || null,
+    messagesUntilNext: nextLevel ? Math.max(0, nextLevel.minMessages - count) : 0,
+    progress,
+    isMaxLevel: !nextLevel,
+  };
+};
+
 const CERTIFICATION_DAYS = 30;
 
 export const getCertificationStatus = (profile = {}) => {

@@ -160,6 +160,8 @@ const buildMemberSnippet = (profile = {}) => ({
   bio: profile.bio || '',
   isOnline: typeof profile.isOnline === 'boolean' ? profile.isOnline : false,
   lastSeen: profile.lastSeen || null,
+  messageCount: Number(profile.messageCount) || 0,
+  isCertified: Boolean(profile.isCertified),
 });
 
 const buildMessagePreview = (message) => {
@@ -627,6 +629,9 @@ const commitRemoteMessage = async (messageInput) => {
     },
     { merge: true }
   );
+  batch.update(doc(db, 'users', messageInput.sender.uid), {
+    messageCount: increment(1),
+  });
   await batch.commit();
 
   return {

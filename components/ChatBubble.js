@@ -110,6 +110,7 @@ function ChatBubble({
   senderLabel = '',
   senderAvatar = null,
   senderCertified = false,
+  senderLevelColor = null,
   onPressSender,
   onSwipeReply,
   onPressImage,
@@ -344,7 +345,7 @@ function ChatBubble({
     <Animated.View style={{ opacity: entranceFade, transform: [{ translateX: swipeTranslate }, { translateY: entranceSlide }] }} {...panResponder.panHandlers}>
       <View style={[styles.row, isMine ? styles.rowMine : styles.rowTheirs, groupShape === 'middle' || groupShape === 'end' ? styles.compactRow : null]}>
         {!isMine && showSenderAvatar ? (
-          <Avatar uri={senderAvatar} label={senderLabel} size={30} onPress={onPressSender} />
+          <Avatar uri={senderAvatar} label={senderLabel} size={30} onPress={onPressSender} levelColor={senderLevelColor} />
         ) : (
           <View style={styles.avatarSpacer} />
         )}

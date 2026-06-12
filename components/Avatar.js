@@ -8,7 +8,7 @@ import AnimatedProfileCard from './AnimatedProfileCard';
 
 const CERTIFIED_BADGE_COLOR = '#F5C518';
 
-function Avatar({ uri = null, label = '', size = 48, showOnline = false, onPress = null, cardEffect = null, isCertified = false }) {
+function Avatar({ uri = null, label = '', size = 48, showOnline = false, onPress = null, cardEffect = null, isCertified = false, levelColor = null }) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, size), [theme, size]);
   const initials = useMemo(() => getInitials(label), [label]);
@@ -17,7 +17,7 @@ function Avatar({ uri = null, label = '', size = 48, showOnline = false, onPress
   const certifiedBadgeSize = Math.max(14, Math.round(size * 0.28));
 
   const avatarContent = (
-    <Container onPress={onPress} style={styles.wrap}>
+    <Container onPress={onPress} style={[styles.wrap, levelColor && { borderWidth: 3, borderColor: levelColor }]}>
       {uri ? (
         <Image source={{ uri }} style={styles.image} resizeMode="cover" />
       ) : (

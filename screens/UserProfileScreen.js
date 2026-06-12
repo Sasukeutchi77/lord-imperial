@@ -8,7 +8,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../services/firebase';
 import { ensurePrivateChat } from '../services/chat';
-import { formatLastSeen, getCertificationStatus, getUserLabel } from '../utils/helpers';
+import { formatLastSeen, getCertificationStatus, getUserLabel, getUserLevel } from '../utils/helpers';
 import { useAppTheme } from '../utils/theme';
 
 export default function UserProfileScreen({ navigation, route }) {
@@ -91,6 +91,17 @@ export default function UserProfileScreen({ navigation, route }) {
               <Text style={styles.certBadgeText}>Compte certifié</Text>
             </View>
           ) : null}
+
+          {/* Level badge */}
+          {(() => {
+            const level = getUserLevel(user || {});
+            return (
+              <View style={[styles.certBadge, { backgroundColor: level.color + '22', borderColor: level.color + '66', borderWidth: 1, marginTop: 4 }]}>
+                <Text style={{ fontSize: 13 }}>{level.icon}</Text>
+                <Text style={[styles.certBadgeText, { color: level.color, marginLeft: 4 }]}>{level.name}</Text>
+              </View>
+            );
+          })()}
 
           <View style={styles.statusPill}>
             <Ionicons

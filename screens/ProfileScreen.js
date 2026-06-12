@@ -24,7 +24,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../utils/theme';
 import { logoutUser, updateUserProfile } from '../services/auth';
 import { auth, db } from '../services/firebase';
-import { formatLastSeen, getCertificationStatus, normalizeBio, normalizeDisplayName, toDate, validateUsername } from '../utils/helpers';
+import { formatLastSeen, getCertificationStatus, getUserLevel, normalizeBio, normalizeDisplayName, toDate, validateUsername } from '../utils/helpers';
 import { pickImageFromLibrary } from '../services/imagePicker';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -366,6 +366,40 @@ export default function ProfileScreen() {
                   </View>
                   <Text style={styles.certProgressLabel}>
                     {cert.daysRemaining === 0 ? 'Vérification en cours…' : `${cert.daysRemaining} jour${cert.daysRemaining > 1 ? 's' : ''} restant${cert.daysRemaining > 1 ? 's' : ''}`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        })()}
+
+        {/* Level */}
+        {(() => {
+          const level = getUserLevel(profile || {});
+          return (
+            <View style={[styles.certCard, { borderColor: level.color + '55', borderWidth: 1 }]}>
+              <View style={styles.certHeader}>
+                <View style={[styles.certIconWrap, { backgroundColor: level.color + '22' }]}>
+                  <Text style={{ fontSize: 16 }}>{level.icon}</Text>
+                </View>
+                <View style={styles.certTextWrap}>
+                  <Text style={[styles.certTitle, { color: level.color }]}>
+                    Niveau {level.name}
+                  </Text>
+                  <Text style={styles.certSubtitle}>
+                    {level.isMaxLevel
+                      ? `${level.count} messages envoyés — Rang maximum !`
+                      : `${level.count} message${level.count !== 1 ? 's' : ''} envoyé${level.count !== 1 ? 's' : ''} — ${level.messagesUntilNext} avant ${level.nextLevel?.name}`}
+                  </Text>
+                </View>
+              </View>
+              {!level.isMaxLevel && (
+                <View style={styles.certProgressWrap}>
+                  <View style={styles.certProgressTrack}>
+                    <View style={[styles.certProgressBar, { width: `${Math.round(level.progress * 100)}%`, backgroundColor: level.color }]} />
+                  </View>
+                  <Text style={styles.certProgressLabel}>
+                    {Math.round(level.progress * 100)}% vers {level.nextLevel?.name}
                   </Text>
                 </View>
               )}

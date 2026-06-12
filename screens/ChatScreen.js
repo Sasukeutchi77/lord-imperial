@@ -50,7 +50,7 @@ import { getMemoryMessages } from '../services/offlineStore';
 import { subscribeToNetworkStatus } from '../services/network';
 import { pickChatVideoFromLibrary } from '../services/imagePicker';
 import { useAuth } from '../context/AuthContext';
-import { buildReplyReference, formatLastSeen, isChatAdmin } from '../utils/helpers';
+import { buildReplyReference, formatLastSeen, getUserLevel, isChatAdmin } from '../utils/helpers';
 import { useAppTheme } from '../utils/theme';
 import { updateActiveChatId } from '../services/auth';
 import { createAndStoreSticker } from '../services/stickers';
@@ -740,6 +740,7 @@ export default function ChatScreen({ navigation, route }) {
           senderLabel={senderLabel}
           senderAvatar={senderProfile?.avatar || null}
           senderCertified={Boolean(senderProfile?.isCertified)}
+          senderLevelColor={getUserLevel(senderProfile || {}).color}
           isMine={item.senderId === profile.uid}
           highlighted={activeSearchResultId === getMessageKey(item)}
           canDelete={item.type !== 'system' && item.type !== 'deleted' && (item.senderId === profile.uid || admin)}
